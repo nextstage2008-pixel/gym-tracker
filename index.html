@@ -119,6 +119,14 @@ table.hist th{color:var(--sub); font-weight:500; font-size:12px;}
 .seg button.on{background:var(--gold); color:#151515;}
 .weight-input-row{display:grid; grid-template-columns:1fr 90px; gap:8px;}
 h2.sec{font-size:14px; color:var(--sub); margin:16px 0 8px; font-weight:600;}
+.week-strip{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px;}
+.wk{background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:7px 4px; text-align:center;}
+.wk.today{border-color:var(--gold); background:#26240a;}
+.wk .dw{font-size:11px; color:var(--sub);}
+.wk .mn{font-weight:900; font-size:17px; margin-top:2px;}
+.wk .mn.A{color:var(--gold);} .wk .mn.B{color:var(--blue);} .wk .mn.off{color:var(--sub); font-weight:400; font-size:13px;}
+.wk .st{font-size:10px; margin-top:1px; color:var(--sub);}
+.wk .st.done{color:var(--green);}
 .cardio-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
 .cardio-grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
 .field-label{font-size:12px; color:var(--sub); margin-bottom:4px; display:block;}
@@ -159,7 +167,7 @@ h2.sec{font-size:14px; color:var(--sub); margin:16px 0 8px; font-weight:600;}
 <script>
 "use strict";
 /* ================= データ ================= */
-const APP_VER = "v1.2";
+const APP_VER = "v1.3";
 const KEY = "gymtracker_v1";
 
 const SEED = {
@@ -238,6 +246,36 @@ function suggest(exDef){
   return rec.cleared ? {kg: rec.kg + exDef.inc, up:true, last:rec}
                      : {kg: rec.kg, up:false, last:rec};
 }
+// 今週の予定（月・水・金、A/Bは1回ごとに交互で予測）
+function weekPlan(){
+  const t = todayStr();
+  const now = new Date();
+  const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay()+6)%7));
+  const ymd = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const sesBy = {}; db.sessions.forEach(s=>{ sesBy[s.date]=s; });
+  const flip = m => m==="A" ? "B" : "A";
+  const out = [];
+  let chain = null; // 予測の連鎖 {date, menu}
+  [["月",0],["水",2],["金",4]].forEach(([dw,off])=>{
+    const d = new Date(mon); d.setDate(mon.getDate()+off);
+    const ds = ymd(d);
+    const ses = sesBy[ds];
+    if(ses){
+      out.push({dw, ds, menu:ses.menu, st: ds===t ? "today-done" : "done"});
+      chain = {date:ds, menu:ses.menu};
+    }else if(ds < t){
+      out.push({dw, ds, menu:null, st:"missed"});
+    }else{
+      const prior = db.sessions.filter(s=>s.date<ds).slice(-1)[0];
+      let base = prior ? prior.menu : null;
+      if(chain && (!prior || chain.date > prior.date)) base = chain.menu;
+      const menu = base ? flip(base) : "A";
+      out.push({dw, ds, menu, st: ds===t ? "today" : "plan"});
+      chain = {date:ds, menu};
+    }
+  });
+  return out;
+}
 // 今日のメニュー判定: 前回セッションの逆。初回はA
 function todaysMenu(){
   const t = todayStr();
@@ -301,6 +339,17 @@ function renderToday(){
       <span>今日は <span class="badge ${curMenu==="B"?"b":""}">メニュー${curMenu}</span></span>
       <span class="muted small">${existing?"記録済み（修正可）":"未記録"}</span>
     </div>
+    <div class="muted small" style="margin-top:4px">${menuReason()}</div>
+    <div class="week-strip">${weekPlan().map(w=>`
+      <div class="wk ${w.st.startsWith("today")?"today":""}">
+        <div class="dw">${w.dw}</div>
+        <div class="mn ${w.menu||"off"}">${w.menu||"−"}</div>
+        <div class="st ${w.st.includes("done")?"done":""}">${
+          w.st==="done"?"✔ 済": w.st==="today-done"?"✔ 今日": w.st==="today"?"今日":
+          w.st==="missed"?"未実施":"予定"}</div>
+      </div>`).join("")}
+    </div>
+    <div class="muted small" style="margin-top:8px">A/Bは曜日固定ではなく<b style="color:var(--text)">1回ごとに交互</b>。週の途中で休んでも、次に来た日は前回の続きからでOK。</div>
     <div class="muted small" style="margin-top:6px">ウォームアップ: トレッドミル or バイク 5〜8分（軽く汗ばむ程度）</div>
   </div>`;
 
@@ -366,6 +415,17 @@ function renderToday(){
   <button class="primary" onclick="saveSession()">${existing?"✔ 記録を更新する":"✔ 今日のトレを保存する"}</button>
   <div style="height:10px"></div>`;
   page.innerHTML = html;
+}
+function menuReason(){
+  const t = todayStr();
+  const todaySes = db.sessions.find(s=>s.date===t);
+  if(todaySes) return `今日の記録はメニュー${todaySes.menu}で保存済み`;
+  const past = db.sessions.filter(s=>s.date < t);
+  if(!past.length) return "初回なのでメニューAからスタート";
+  const last = past[past.length-1];
+  const expected = last.menu === "A" ? "B" : "A";
+  const note = curMenu === expected ? "" : "（手動で切替中）";
+  return `前回 ${fmtDate(last.date)} がメニュー${last.menu}だったので、今日は${expected}の番${note}`;
 }
 function switchMenu(m){ curMenu = m; renderToday(); }
 function toggleNote(i){ openNotes[i]=!openNotes[i]; document.getElementById("note-"+i).classList.toggle("open"); }
