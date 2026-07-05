@@ -159,6 +159,7 @@ h2.sec{font-size:14px; color:var(--sub); margin:16px 0 8px; font-weight:600;}
 <script>
 "use strict";
 /* ================= データ ================= */
+const APP_VER = "v1.2";
 const KEY = "gymtracker_v1";
 
 const SEED = {
@@ -651,7 +652,12 @@ function renderSettings(){
     <h3>⚠️ データ削除</h3>
     <button class="danger" onclick="resetAll()">全データを削除して初期化</button>
   </div>
-  <div class="muted small" style="text-align:center; padding:8px">Gym Tracker v1.0 ｜ 記録件数: トレ${db.sessions.length}回・体重${db.weights.length}日</div>`;
+  <div class="card">
+    <h3>🔄 アプリの更新</h3>
+    <button class="ghost" onclick="forceUpdate()">最新版に更新する</button>
+    <div class="muted small" style="margin-top:8px">画面の表示が古いままのときに押してください。記録データは消えません。</div>
+  </div>
+  <div class="muted small" style="text-align:center; padding:8px">Gym Tracker ${APP_VER} ｜ 記録件数: トレ${db.sessions.length}回・体重${db.weights.length}日</div>`;
   page.innerHTML = html;
 }
 function saveSettings(){
@@ -694,6 +700,19 @@ function importJson(input){
   r.readAsText(f);
   input.value = "";
 }
+async function forceUpdate(){
+  try{
+    if("caches" in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    if("serviceWorker" in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+  }catch(e){}
+  location.reload();
+}
 function resetAll(){
   if(!confirm("本当に全データを削除しますか？（トレ記録・体重記録がすべて消えます）")) return;
   if(!confirm("最終確認：エクスポート済みですか？削除は取り消せません。")) return;
@@ -719,7 +738,12 @@ document.getElementById("hdr-date").textContent =
 renderToday();
 
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
+  navigator.serviceWorker.register("sw.js").then(reg=>{ reg.update().catch(()=>{}); }).catch(()=>{});
+  // 新しいService Workerが有効になったら一度だけ自動リロードして最新画面に
+  let swReloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+    if(swReloaded) return; swReloaded = true; location.reload();
+  });
 }
 </script>
 </body>

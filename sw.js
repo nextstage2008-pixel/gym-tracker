@@ -1,8 +1,12 @@
-const CACHE = "gymtracker-v2";
+const CACHE = "gymtracker-v3";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: "no-cache" }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", e => {
@@ -12,19 +16,35 @@ self.addEventListener("activate", e => {
   );
 });
 
-// キャッシュ優先＋バックグラウンド更新（stale-while-revalidate）
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetched = fetch(e.request).then(res => {
-        if (res && res.ok) {
+  const isPage = e.request.mode === "navigate" ||
+                 e.request.destination === "document" ||
+                 e.request.url.endsWith("/index.html");
+  if (isPage) {
+    // 画面本体はネットワーク優先（常に最新）。圏外時のみキャッシュ
+    e.respondWith(
+      fetch(new Request(e.request, { cache: "no-cache" }))
+        .then(res => {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => cached);
-      return cached || fetched;
-    })
-  );
+          return res;
+        })
+        .catch(() => caches.match(e.request).then(r => r || caches.match("./index.html")))
+    );
+  } else {
+    // アイコン等はキャッシュ優先＋裏で更新
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const fetched = fetch(e.request).then(res => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
+          return res;
+        }).catch(() => cached);
+        return cached || fetched;
+      })
+    );
+  }
 });
