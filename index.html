@@ -91,7 +91,9 @@ input:focus,select:focus{outline:none; border-color:var(--gold-dim);}
 .cal-badge.B{background:var(--blue); color:#fff;}
 .cal-wdot{width:5px; height:5px; border-radius:50%; background:var(--green); position:absolute; bottom:4px;}
 .note-toggle{color:var(--gold-dim); font-size:12px; background:none; border:none; padding:4px 0; cursor:pointer; text-decoration:underline;}
-.form-note{color:var(--sub); font-size:12px; margin-top:4px; display:none; line-height:1.5;}
+.form-note{color:var(--sub); font-size:12px; margin-top:4px; display:none; line-height:1.6;}
+.form-note b{color:var(--text);}
+.machine-desc{background:var(--card2); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; padding:8px 10px; margin-bottom:8px;}
 .form-note.open{display:block;}
 .last-rec{font-size:12px; color:var(--sub); margin-top:6px;}
 .chart-wrap{width:100%; overflow-x:auto;}
@@ -163,20 +165,20 @@ const SEED = {
   settings: { startDate:"2026-07-05", startWeight:103, goalWeight:89, goalDate:"2026-10-05" },
   menus: {
     A: [
-      {name:"レッグプレス", part:"脚・お尻", sets:3, rest:"90秒", inc:5,   note:"膝とつま先を同じ向き。腰を浮かせない。"},
-      {name:"チェストプレス", part:"胸・肩・腕", sets:3, rest:"75〜90秒", inc:2.5, note:"肩をすくめず、胸を張って押す。"},
-      {name:"ラットプルダウン", part:"背中", sets:3, rest:"75〜90秒", inc:2.5, note:"胸に向かって引く。首の後ろには引かない。"},
-      {name:"シーテッドレッグカール", part:"もも裏", sets:2, rest:"60秒", inc:2.5, note:"反動を使わず、戻しをゆっくり。"},
-      {name:"ショルダープレス", part:"肩", sets:2, rest:"60〜75秒", inc:2.5, note:"腰を反らせすぎない。肘は少し前。"},
-      {name:"アブドミナルクランチ", part:"腹筋", sets:2, rest:"45〜60秒", inc:2.5, note:"首で引かず、みぞおちを丸める。"}
+      {name:"レッグプレス", part:"脚・お尻", sets:3, rest:"90秒", inc:5,   machine:"座るシートの先に大きな踏み板（プレート）が付いた大型マシン。シートに深く座り、踏み板に両足を肩幅で置いて、脚全体でグーッと押して戻す。脚マシンの中で一番大きくて目立つ。", note:"膝とつま先を同じ向き。腰を浮かせない。"},
+      {name:"チェストプレス", part:"胸・肩・腕", sets:3, rest:"75〜90秒", inc:2.5, machine:"ベンチプレスのマシン版。背もたれ付きのシートに座ると、胸の高さに左右のハンドルがある。それを正面にまっすぐ押し出して戻す。", note:"肩をすくめず、胸を張って押す。"},
+      {name:"ラットプルダウン", part:"背中", sets:3, rest:"75〜90秒", inc:2.5, machine:"頭の上に長い横棒（バー）がケーブルでぶら下がっているマシン。座って太ももをパッドで固定し、バーを胸に向かって引き下ろす。懸垂の代わりになる機械。", note:"胸に向かって引く。首の後ろには引かない。"},
+      {name:"シーテッドレッグカール", part:"もも裏", sets:2, rest:"60秒", inc:2.5, machine:"座って脚を前に伸ばすと、ふくらはぎの上にパッドが乗る。そのパッドを膝を曲げてイスの下へ巻き込むように押し下げる。もも裏専用。レッグエクステンションと形が似ているので「Leg Curl」表記を確認。", note:"反動を使わず、戻しをゆっくり。"},
+      {name:"ショルダープレス", part:"肩", sets:2, rest:"60〜75秒", inc:2.5, machine:"背もたれ付きのシートに座ると、肩〜耳の高さに左右のハンドルがある。それを頭の上に押し上げて戻す。チェストプレスと似ているがハンドル位置が高い。", note:"腰を反らせすぎない。肘は少し前。"},
+      {name:"アブドミナルクランチ", part:"腹筋", sets:2, rest:"45〜60秒", inc:2.5, machine:"座って胸の前のパッド（またはハンドル）を抱え、お腹を丸めて上体を前に倒すマシン。腹筋運動を座ったままやるイメージ。", note:"首で引かず、みぞおちを丸める。"}
     ],
     B: [
-      {name:"ハックスクワット", part:"脚・お尻", sets:3, rest:"90秒", inc:5,   note:"深さより安全優先。膝が内側に入らないように。"},
-      {name:"シーテッドロー", part:"背中", sets:3, rest:"75〜90秒", inc:2.5, note:"肩甲骨を寄せる。腰を反らせて引かない。"},
-      {name:"インクラインチェストプレス", part:"胸上部", sets:3, rest:"75〜90秒", inc:2.5, note:"胸を張り、肩前に痛みが出ない軌道で。"},
-      {name:"レッグエクステンション", part:"もも前", sets:2, rest:"60秒", inc:2.5, note:"膝をロックし切らず、上で一瞬止める。"},
-      {name:"リアデルトマシン", part:"肩後部・背中上部", sets:2, rest:"60秒", inc:2.5, note:"肩をすくめず、肘で開く。"},
-      {name:"ロータリートーソー", part:"体幹", sets:2, rest:"45〜60秒", inc:2.5, note:"勢いを使わず、可動域は無理しない。"}
+      {name:"ハックスクワット", part:"脚・お尻", sets:3, rest:"90秒", inc:5,   machine:"斜め45度のレールに背中と肩を預けて立ち、肩パッドを担いだまましゃがんで立ち上がる大型マシン。足元に斜めの踏み台がある。怖ければレッグプレスで代用OK。", note:"深さより安全優先。膝が内側に入らないように。"},
+      {name:"シーテッドロー", part:"背中", sets:3, rest:"75〜90秒", inc:2.5, machine:"座って胸を前のパッドに当て、正面のハンドルを自分のお腹に向かって引き寄せる。ボートを漕ぐような動き。ケーブル式のロー（ロープーリー）でも同じ効果。", note:"肩甲骨を寄せる。腰を反らせて引かない。"},
+      {name:"インクラインチェストプレス", part:"胸上部", sets:3, rest:"75〜90秒", inc:2.5, machine:"チェストプレスの「斜め上に押す」版。シートの背もたれが少し倒れていて、ハンドルを斜め上方向に押し上げる。胸の上部に効く。", note:"胸を張り、肩前に痛みが出ない軌道で。"},
+      {name:"レッグエクステンション", part:"もも前", sets:2, rest:"60秒", inc:2.5, machine:"座って足首の前にパッドが当たる位置にセットし、膝を伸ばして脚を蹴り上げる。もも前専用。シーテッドレッグカールと形が似ているので「Leg Extension」表記を確認。", note:"膝をロックし切らず、上で一瞬止める。"},
+      {name:"リアデルトマシン", part:"肩後部・背中上部", sets:2, rest:"60秒", inc:2.5, machine:"バタフライ（ペックフライ）マシンに逆向きに座る、または専用マシン。胸をパッドに当てて座り、両腕を前から後ろへ大きく開く。肩の後ろ側に効く。", note:"肩をすくめず、肘で開く。"},
+      {name:"ロータリートーソー", part:"体幹", sets:2, rest:"45〜60秒", inc:2.5, machine:"座って上半身か下半身をパッドで固定し、体を左右にゆっくりひねるマシン。左右それぞれ同じ回数やる。脇腹に効く。", note:"勢いを使わず、可動域は無理しない。"}
     ]
   },
   sessions: [],   // {date, menu, exercises:[{name, kg, cleared}], cardioMin, rpe}  ※回数は10回固定
@@ -187,7 +189,17 @@ let db = load();
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(raw){ const d = JSON.parse(raw); if(d && d.menus) return d; }
+    if(raw){
+      const d = JSON.parse(raw);
+      if(d && d.menus){
+        // 旧データ移行: 機械の説明・フォームメモをSEEDから補完（種目名一致）
+        ["A","B"].forEach(m=>(d.menus[m]||[]).forEach(ex=>{
+          const seed = SEED.menus[m].find(s=>s.name===ex.name);
+          if(seed){ if(!ex.machine) ex.machine = seed.machine; if(!ex.note) ex.note = seed.note; }
+        }));
+        return d;
+      }
+    }
   }catch(e){}
   return JSON.parse(JSON.stringify(SEED));
 }
@@ -323,8 +335,11 @@ function renderToday(){
         </div>
       </div>
       ${suggestHtml}${lastHtml}${inputHtml}
-      <button class="note-toggle" onclick="toggleNote(${i})">📝 フォームメモ</button>
-      <div class="form-note ${openNotes[i]?"open":""}" id="note-${i}">${esc(ex.note)}</div>
+      <button class="note-toggle" onclick="toggleNote(${i})">❓ どんな機械？・フォームメモ</button>
+      <div class="form-note ${openNotes[i]?"open":""}" id="note-${i}">
+        ${ex.machine?`<div class="machine-desc">🏋️ <b>どんな機械？</b><br>${esc(ex.machine)}</div>`:""}
+        <div>📝 <b>フォームのコツ</b><br>${esc(ex.note)}</div>
+      </div>
     </div>`;
   });
 
