@@ -173,11 +173,11 @@ h2.sec{font-size:14px; color:var(--sub); margin:16px 0 8px; font-weight:600;}
 <script>
 "use strict";
 /* ================= データ ================= */
-const APP_VER = "v1.3";
-const KEY = "gymtracker_v1";
+const APP_VER = "v2.0";
+const KEY = "anytime_v1";   // v1.x は gymtracker_v1（GOLD'S GYM 時代）。移行せず新規スタート
 
 const SEED = {
-  settings: { startDate:"2026-07-05", startWeight:103, goalWeight:89, goalDate:"2026-10-05" },
+  settings: { startDate:null, startWeight:null, goalWeight:null, goalDate:null },
   menus: {
     A: [
       {name:"レッグプレス", part:"脚・お尻", sets:3, rest:"90秒", inc:5,
@@ -242,11 +242,16 @@ function load(){
           const seed = SEED.menus[m].find(s=>s.name===ex.name);
           if(seed){ if(!ex.machine) ex.machine = seed.machine; if(!ex.note) ex.note = seed.note; }
         }));
-        return d;
+        return withDefaults(d);
       }
     }
   }catch(e){}
-  return JSON.parse(JSON.stringify(SEED));
+  return withDefaults(JSON.parse(JSON.stringify(SEED)));
+}
+function withDefaults(d){
+  if(!d.settings) d.settings = {};
+  if(!d.settings.startDate) d.settings.startDate = todayStr();
+  return d;
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(db)); }
 
@@ -263,6 +268,29 @@ function toast(msg){
   clearTimeout(t._tm); t._tm = setTimeout(()=>t.classList.remove("show"), 1800);
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ================= 目標（初回設定） ================= */
+function goalIsSet(){
+  const st = db.settings;
+  return st.startWeight!=null && st.goalWeight!=null && !!st.goalDate;
+}
+function saveGoalFirst(){
+  const st = db.settings;
+  const sw = parseFloat(document.getElementById("g-start-w").value.replace(",", "."));
+  const gw = parseFloat(document.getElementById("g-goal-w").value.replace(",", "."));
+  const sd = document.getElementById("g-start").value;
+  const gd = document.getElementById("g-goal-date").value;
+  if(isNaN(sw) || isNaN(gw)){ toast("体重を数字で入れてください"); return; }
+  if(!gd){ toast("目標日を選んでください"); return; }
+  if(gd <= (sd||st.startDate)){ toast("目標日は開始日より後にしてください"); return; }
+  st.startWeight = sw; st.goalWeight = gw; st.goalDate = gd;
+  if(sd) st.startDate = sd;
+  if(!db.weights.some(w=>w.date===st.startDate)){
+    db.weights.push({date:st.startDate, kg:sw});
+    db.weights.sort((a,b)=>a.date<b.date?-1:1);
+  }
+  save(); renderAll(); toast("目標を設定しました");
+}
 
 /* ================= 提案ロジック ================= */
 // 種目の直近記録（今日以外）を取得
@@ -365,7 +393,20 @@ function renderToday(){
   const menu = db.menus[curMenu];
   const isFirstEver = db.sessions.length===0;
 
-  let html = `
+  const goalCard = goalIsSet() ? "" : `
+  <div class="card" style="border-color:var(--gold)">
+    <h3>🎯 はじめに目標を設定</h3>
+    <div class="muted small" style="margin-bottom:8px">エニタイムでの新スタートです。現在の体重と目標を入れてください（あとで設定タブから変更できます）。</div>
+    <div class="cardio-grid" style="margin-bottom:8px">
+      <div><label class="field-label">開始日</label><input type="date" id="g-start" value="${db.settings.startDate}"></div>
+      <div><label class="field-label">目標日</label><input type="date" id="g-goal-date" value=""></div>
+      <div><label class="field-label">現在の体重(kg)</label><input type="text" inputmode="decimal" id="g-start-w" placeholder="例: 96.5"></div>
+      <div><label class="field-label">目標体重(kg)</label><input type="text" inputmode="decimal" id="g-goal-w" placeholder="例: 89"></div>
+    </div>
+    <button class="primary" onclick="saveGoalFirst()">目標を保存する</button>
+  </div>`;
+
+  let html = `${goalCard}
   <div class="seg">
     <button class="${curMenu==="A"?"on":""}" onclick="switchMenu('A')">メニューA</button>
     <button class="${curMenu==="B"?"on":""}" onclick="switchMenu('B')">メニューB</button>
@@ -577,7 +618,9 @@ function calPick(ds){ calSel = ds; renderCal(); }
 /* ================= 体重 ================= */
 function paceTargetAt(dateStr){
   const st = db.settings;
+  if(!goalIsSet()) return null;
   const total = dayDiff(st.startDate, st.goalDate);
+  if(total <= 0) return st.goalWeight;
   const cur = Math.min(Math.max(dayDiff(st.startDate, dateStr),0), total);
   return st.startWeight + (st.goalWeight - st.startWeight) * cur / total;
 }
@@ -589,14 +632,14 @@ function renderWeight(){
   const latest = db.weights.length ? db.weights[db.weights.length-1] : null;
   const target = paceTargetAt(t);
   let deltaHtml = `<div class="v">-</div>`;
-  if(latest){
+  if(latest && goalIsSet()){
     const d = latest.kg - paceTargetAt(latest.date);
     deltaHtml = `<div class="v ${d<=0?"good":"bad"}">${d>0?"+":""}${d.toFixed(1)}</div>`;
   }
   let html = `
   <div class="stat-row">
     <div class="stat"><div class="l">最新体重</div><div class="v gold">${latest?latest.kg.toFixed(1):"-"}</div><div class="l">kg${latest?"（"+fmtDate(latest.date)+"）":""}</div></div>
-    <div class="stat"><div class="l">今日の目標ペース</div><div class="v">${target.toFixed(1)}</div><div class="l">kg</div></div>
+    <div class="stat"><div class="l">今日の目標ペース</div><div class="v">${target!=null?target.toFixed(1):"-"}</div><div class="l">kg</div></div>
     <div class="stat"><div class="l">ペース比</div>${deltaHtml}<div class="l">kg</div></div>
   </div>
   <div class="card">
@@ -613,14 +656,14 @@ function renderWeight(){
     <div class="small" style="margin-top:6px">
       <span style="color:#8f75e0">━ 実績</span>
       <span style="color:var(--blue)">━ 7日平均</span>
-      <span style="color:var(--sub)">┅ 目標ペース(${st.startWeight}→${st.goalWeight}kg)</span>
+      <span style="color:var(--sub)">┅ 目標ペース(${goalIsSet()?st.startWeight+"→"+st.goalWeight+"kg":"未設定"})</span>
     </div>
   </div>`;
   if(db.weights.length){
     html += `<h2 class="sec">履歴（直近14件）</h2><div class="card"><table class="hist"><tr><th>日付</th><th>体重</th><th>ペース比</th></tr>`;
     db.weights.slice(-14).reverse().forEach(w=>{
-      const d = w.kg - paceTargetAt(w.date);
-      html += `<tr><td>${fmtDate(w.date)}</td><td>${w.kg.toFixed(1)}kg</td><td style="color:${d<=0?"var(--green)":"var(--red)"}">${d>0?"+":""}${d.toFixed(1)}kg</td></tr>`;
+      const pt = paceTargetAt(w.date); const d = pt==null ? null : w.kg - pt;
+      html += `<tr><td>${fmtDate(w.date)}</td><td>${w.kg.toFixed(1)}kg</td><td style="color:${d==null||d<=0?"var(--green)":"var(--red)"}">${d==null?"-":(d>0?"+":"")+d.toFixed(1)+"kg"}</td></tr>`;
     });
     html += `</table></div>`;
   }
@@ -638,19 +681,18 @@ function weightChart(){
     const win = db.weights.filter(v=>v.date>=fs && v.date<=w.date);
     if(win.length>=3) ma.push({x:x(w.date), y:win.reduce((a,b)=>a+b.kg,0)/win.length});
   });
-  const totalDays = dayDiff(st.startDate, st.goalDate);
-  const pace = [{x:0,y:st.startWeight},{x:totalDays,y:st.goalWeight}];
+  const totalDays = goalIsSet() ? Math.max(dayDiff(st.startDate, st.goalDate),1) : 0;
+  const pace = goalIsSet() ? [{x:0,y:st.startWeight},{x:totalDays,y:st.goalWeight}] : [];
   const xTicks = [];
   for(let m=0;m<=3;m++){
     const d = new Date(st.startDate); d.setMonth(d.getMonth()+m);
     const ds = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     xTicks.push({x:x(ds), label:(d.getMonth()+1)+"月"});
   }
-  return lineChart([
-    {pts:pace, color:"#9a9aa5", width:1.5, dash:"5 5"},
-    {pts:ma, color:"#00acce", width:2},
-    {pts:actual, color:"#8f75e0", width:2, dots:true}
-  ], {xTicks, yDec:0});
+  const series = [];
+  if(pace.length) series.push({pts:pace, color:"#9a9aa5", width:1.5, dash:"5 5"});
+  series.push({pts:ma, color:"#00acce", width:2}, {pts:actual, color:"#8f75e0", width:2, dots:true});
+  return lineChart(series, {xTicks, yDec:0});
 }
 function saveWeight(){
   const v = parseFloat(document.getElementById("w-input").value.replace(",", "."));
@@ -715,10 +757,10 @@ function renderSettings(){
   <div class="card">
     <h3>🎯 目標設定</h3>
     <div class="cardio-grid" style="margin-bottom:8px">
-      <div><label class="field-label">開始日</label><input type="date" id="st-start" value="${st.startDate}"></div>
-      <div><label class="field-label">目標日</label><input type="date" id="st-goal-date" value="${st.goalDate}"></div>
-      <div><label class="field-label">開始体重(kg)</label><input type="text" inputmode="decimal" id="st-start-w" value="${st.startWeight}"></div>
-      <div><label class="field-label">目標体重(kg)</label><input type="text" inputmode="decimal" id="st-goal-w" value="${st.goalWeight}"></div>
+      <div><label class="field-label">開始日</label><input type="date" id="st-start" value="${st.startDate||""}"></div>
+      <div><label class="field-label">目標日</label><input type="date" id="st-goal-date" value="${st.goalDate||""}"></div>
+      <div><label class="field-label">開始体重(kg)</label><input type="text" inputmode="decimal" id="st-start-w" value="${st.startWeight??""}"></div>
+      <div><label class="field-label">目標体重(kg)</label><input type="text" inputmode="decimal" id="st-goal-w" value="${st.goalWeight??""}"></div>
     </div>
     <button class="ghost" onclick="saveSettings()">目標を保存</button>
   </div>`;
@@ -831,7 +873,11 @@ document.querySelectorAll("nav button").forEach(b=>{
 function renderAll(){ renderToday(); renderCal(); renderWeight(); renderProgress(); renderSettings(); }
 document.getElementById("hdr-date").textContent =
   new Date().toLocaleDateString("ja-JP",{month:"long",day:"numeric",weekday:"short"});
-renderToday();
+{
+  const tab = (location.hash||"").replace("#","");
+  const btn = renders[tab] ? document.querySelector(`nav button[data-tab="${tab}"]`) : null;
+  if(btn) btn.click(); else renderToday();
+}
 
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("sw.js").then(reg=>{ reg.update().catch(()=>{}); }).catch(()=>{});
