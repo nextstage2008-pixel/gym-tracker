@@ -1,7 +1,7 @@
 {
-  "name": "GOLD'S GYM ジム記録",
+  "name": "Anytime Fitness ジム記録",
   "short_name": "ジム記録",
-  "description": "ゴールドジム マシントレーニング＆減量トラッカー",
+  "description": "エニタイムフィットネス美園店 マシントレーニング＆減量トラッカー",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
